@@ -1,47 +1,44 @@
 import cv2
 import numpy as np
+import floorMod as fm
 
-image = cv2.imread('newtest.png')
+#Задаём изображение
+image = cv2.imread('newtest2.png')
 
-#Готовим изображение и выделяем границы
+
+#Меняем цвет изображение, теперь оно имеет 1 канал (схоже с 3 каналом исходного изображения)
 gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+#Применяем алгоритм Кэнни, он находит границы изображения
 edges = cv2.Canny(gray, 50, 150, apertureSize = 3)
 
-#Метод поиска линий
-def findLines(edges):
-  
-    #Задаем пустые списки для координат
-    lineList = []
-    
-    #Поиск горизонтальных линий
-    for i in range(len(edges)):
-        j = 0
-        N = 1
-        while j < len(edges[i])-1:
-            if edges[i][j] == 255:
-                if edges[i][j+1] == 255:
-                    #
-                    N = N + 1
-                elif edges[i][j-1] == 255:
-                    #
-                    lineList.append([i,j-N+1,i,j])
-                    N = 1
-            j = j+1
-       
-        
-    return lineList
+
+#Поиск горизонтальных линий
+lines = fm.find_lines(edges)
+#Поиск вертикальных линий
+linesV = fm.find_lines(np.transpose(edges))
 
 
-linesG = findLines(edges)
-linesV = findLines(np.transpose(edges))
+#Cмещение горизонтальных линий
+new_linesH = fm.shift_lines(lines)
+#Смещение вертикальных линий
+new_linesV = fm.shift_lines(linesV)
 
-#%%
-for i in range(len(linesG)):
-    cv2.line(image, (linesG[i][1], linesG[i][0]), (linesG[i][3], linesG[i][2]), (100,255,100), 2)
 
-for i in range(len(linesV)):
-    cv2.line(image, (linesV[i][0], linesV[i][1]), (linesV[i][2], linesV[i][3]), (250,50,50), 2)
+#Объединяем смежные горизонтальные и вертикальные линии в одну точку
+list_lines = fm.find_joint_point(new_linesH,new_linesV)
 
+
+#Поиск объектов
+
+
+
+
+#Отрисовываем результат
+fm.drawHV(image,list_lines)
+
+cv2.namedWindow('Image', cv2.WINDOW_NORMAL)
 cv2.imshow('Image', image)
 cv2.waitKey(0)
+
+
 
