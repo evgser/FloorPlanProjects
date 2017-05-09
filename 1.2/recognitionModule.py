@@ -8,13 +8,14 @@ def find_room(list_object):
     #Вычисляем периметр объекта
     list_per = []
     list_per.extend(perimetr(list_object))
-    
+    print('list_per:', list_per)
     #Вычисляем площадь объекта
     list_area = area(list_object)
-    
+    print('list_area:', list_area)
+
     #Выделиние комнат из объектов
     for i in range(len(list_per)):
-        if list_per[i][1] > 1000 and list_area[i][1] > 50000:
+       if list_per[i][1] > 1000 and list_area[i][1] > 8000:
             list_room.append(list_per[i][0])
             
     return list_room
@@ -58,13 +59,23 @@ def drawHV(image,lines):
     for i in range(len(lines)):
         cv2.line(image, (lines[i][1], lines[i][0]), (lines[i][3], lines[i][2]), (100, 255, 100), 2)
         
-def draw_room(image,list_cycles,list_room):
+def draw_room(image,list_object,list_room):
     for i in list_room:
-        for j in range(len(list_cycles[i])):
-            cv2.line(image, list_cycles[i][j][0], list_cycles[i][j][1], (100, 255, 100), 5)
+        for j in range(len(list_object[i])):
+            cv2.line(image, list_object[i][j][0], list_object[i][j][1], (100, 255, 100), 5)
     
 
 def draw_cycles(image,list_cycles):
     for i in range(len(list_cycles)):
         for j in range(len(list_cycles[i])):
             cv2.line(image, list_cycles[i][j][0], list_cycles[i][j][1], (100, 255, 100), 2)
+            
+#Реализация алгоритмов для связанного графа
+def draw_room_connectivity(image,list_object_connectivity,list_room):
+    for i in list_room:
+        for j in range(len(list_object_connectivity[i])):
+            
+            try:
+                cv2.line(image, list_object_connectivity[i][j], list_object_connectivity[i][j+1], (100, 255, 100), 5)
+            except IndexError:
+                cv2.line(image, list_object_connectivity[i][j], list_object_connectivity[i][0], (100, 255, 100), 5)

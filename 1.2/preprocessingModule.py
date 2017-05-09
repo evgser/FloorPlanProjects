@@ -28,9 +28,12 @@ def find_object(edges):
     list_lines = swapHV(list_lines)
     
     #Ищем циклы
-    list_object = graph_cycle(list_lines)
+    graph, list_object = graph_cycle(list_lines)
     
-    return list_object
+    #Ищем связанные графы и превращаем их в циклы
+    list_object_connectivity = connectivity_graph(graph)
+    
+    return list_object, list_object_connectivity, list_lines
 
 
 #Метод поиска линий
@@ -149,15 +152,12 @@ def find_joint_point(listH, listV):
             elif((listH[i][2:4] == [listV[j][3] + 1,listV[j][2] - 1]) or (listH[i][2:4] == [listV[j][3] + 2,listV[j][2] - 1]) or
                  (listH[i][2:4] == [listV[j][3] + 1,listV[j][2] - 2]) or (listH[i][2:4] == [listV[j][3] + 2,listV[j][2] - 2]) or
                  (listH[i][2:4] == [listV[j][3], listV[j][2] - 1]) or (listH[i][2:4] == [listV[j][3], listV[j][2] - 2]) or
-                 (listH[i][2:4] == [listV[j][3] + 1, listV[j][2]]) or (listH[i][2:4] == [listV[j][3] + 2, listV[j][2]])):
+                 (listH[i][2:4] == [listV[j][3] + 1, listV[j][2]]) or (listH[i][2:4] == [listV[j][3] + 2, listV[j][2]]) or
+                 (listH[i][2:4] == [listV[j][3] - 1, listV[j][2]]) or (listH[i][2:4] == [listV[j][3] - 2, listV[j][2]]) or
+                 (listH[i][2:4] == [listV[j][3], listV[j][2] + 1]) or (listH[i][2:4] == [listV[j][3], listV[j][2] + 2])):
                 
                 listH[i][3] = listV[j][2]
                 listV[j][3] = listH[i][2]
-            
-            elif(listH[i][0:2] == [listV[j][3] - 1,listV[j][2]]):
-                
-                listH[i][1]
-                
                 
             
             j = j + 1
@@ -179,7 +179,6 @@ def graph_cycle(list_lines):
     for c in list_lines:
         graph.add_edge(tuple(c[0:2]),tuple(c[2:4]))
     
-    
     try:
         while 'true':
         
@@ -196,6 +195,105 @@ def graph_cycle(list_lines):
                     graph.remove_node(list_cyc[i][1])
                     
     except nx.exception.NetworkXNoCycle:
-        return list_cycle
+        return graph, list_cycle
         
+#Поиск связанных графов для дальнейшей обработки
+def connectivity_graph(graph):
+    
+    #Инициализируем переменные
+    connectivity_list = []
+    list_object_connectivity = []
+    
+    #Ищем связанные графы
+    connectivity_list = nx.k_components(graph)
+    
+    #Заносим связанные графы в список
+    for i in range(len(connectivity_list[1])):
+        list_object_connectivity.extend([list(connectivity_list[1][i])])
+        
+    return list_object_connectivity
 
+#Преобразование связанного к циклам
+def cycle_to_connectivity(list_object):
+    
+    list_object_connectivity = []
+    list_object_connectivity_help = []
+    
+    for i in range(len(list_object)):
+        for j in range(len(list_object[i])):
+            list_object_connectivity_help.append(list_object[i][j][0])
+            
+            
+        list_object_connectivity.extend([list_object_connectivity_help])
+        list_object_connectivity_help = []
+        
+    return list_object_connectivity
+
+
+
+def transform_to_room(connectivity_graph_list):
+    
+    #Инициализируем переменные
+    location_list = []
+    
+    #Удаляем все графы меньше 4
+    i = 0
+    while i < len(connectivity_graph_list):
+        if len(connectivity_graph_list[i]) < 4:
+            del connectivity_graph_list[i]
+        else:
+            i = i + 1
+    
+    
+    for i in range(len(connectivity_graph_list)):
+        
+        #Заполняем списки y и x для каждого объекта
+        list_y = [connectivity_graph_list[i][j][1] for j in range(len(connectivity_graph_list[i]))]
+        list_x = [connectivity_graph_list[i][j][0] for j in range(len(connectivity_graph_list[i]))]
+      
+        #Ищем min_y
+        min_y = min(list_y)
+        #Инициализируем список для поиска min_x и max_x
+        list_mmx = []
+        
+        while min_y in list_y:
+            
+            #Заполняем список х при min_y
+            list_mmx.append(list_x[list_y.index(min_y)])
+            #Удаляем ячейку для поиска следующего элемента
+            del list_x[list_y.index(min_y)]
+            list_y.remove(min_y)
+            
+        
+        print(i,':',list_mmx)
+        #Ищем min_x и max_x при min_y
+        min_x1 = min(list_mmx)
+        max_x1 = max(list_mmx)
+
+        #Ищем max_y
+        max_y = max(list_y)
+        #Инициализируем список для поиска min_x и max_x
+        list_mmx = []
+        
+        while max_y in list_y:
+            
+            #Заполняем список х при max_y
+            list_mmx.append(list_x[list_y.index(max_y)])
+            #Удаляем ячейку для поиска следующего элемента
+            del list_x[list_y.index(max_y)]
+            list_y.remove(max_y)
+        
+        print(i,':',list_mmx)
+        #Ищем min_x и max_x при min_y
+        min_x2 = min(list_mmx)
+        max_x2 = max(list_mmx)
+        
+        
+        location_list.append([(min_x1, min_y), (max_x1, min_y), (max_x2, max_y), (min_x2, max_y)])
+
+            
+    return location_list
+    
+def match():
+    pass    
+    
