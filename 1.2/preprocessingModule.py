@@ -143,21 +143,21 @@ def connectivity_graph(graph):
     #print('list_connectivity: ',list_connectivity)
     return list_connectivity
 
-def cycle_to_connectivity(list_object):
+def cycle_to_connectivity(list_cycle):
     """Преобразование циклов к связанным графам"""
-    list_object_connectivity = [] #
-    list_object_connectivity_help = [] #
-    #
-    for i in range(len(list_object)):
-        for j in range(len(list_object[i])):
-            list_object_connectivity_help.append(list_object[i][j][0])
-        list_object_connectivity.extend([list_object_connectivity_help])
-        list_object_connectivity_help = []
+    list_cycle_connectivity = [] #инициализируем
+    list_help = [] #инициализируем вспомогательный список
+    #Преобразуем циклы в связанные списки
+    for i in range(len(list_cycle)):
+        for j in range(len(list_cycle[i])):
+            list_help.append(list_cycle[i][j][0])
+        list_cycle_connectivity.extend([list_help])
+        list_help = []
         
-    return list_object_connectivity
+    return list_cycle_connectivity
 
 def transform_to_room(connectivity_graph_list):
-    
+    """ """
     #Инициализируем переменные
     location_list = []
     
@@ -217,12 +217,8 @@ def transform_to_room(connectivity_graph_list):
 
             
     return location_list
-    
-def match():
-    pass
 
-
-#
+#Тестовый метод выделения комнат
 def transform_to_room_2(connectivity_graph_list):
     
     location_list = []
@@ -245,6 +241,11 @@ def transform_to_room_2(connectivity_graph_list):
         
         location_list_help = []
         index_list = []
+    
+    for i in range(len(location_list)):
+        if location_list[i][0][0] == location_list[i][1][0]:
+            location_list[0].append(location_list[0][0])
+            del location_list[0][0]
         
     return location_list
 
