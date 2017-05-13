@@ -1,129 +1,74 @@
 import numpy as np
 import networkx as nx
 
-
-#Получение списка объектов
 def find_object(edges):
+    """Метод получения списка объектов"""
+    lines_hor = find_lines(edges) #поиск горизонтальных линий
+    lines_ver = find_lines(np.transpose(edges)) #поиск вертикальных линий
     
-    list_lines = []
-    
-    #Поиск горизонтальных линий
-    lines_hor = find_lines(edges)
-    #Поиск вертикальных линий
-    lines_ver = find_lines(np.transpose(edges))
-    
-    #Cмещение горизонтальных линий
-    lines_hor_shift = shift_lines(lines_hor)
-    #Смещение вертикальных линий
-    lines_ver_shift = shift_lines(lines_ver)
+    lines_hor_shift = shift_lines(lines_hor) #смещение горизонтальных линий
+    lines_ver_shift = shift_lines(lines_ver) #смещение вертикальных линий
     
     #Объединяем смежные горизонтальные и вертикальные линии в одну точку
-    lines_hor, lines_ver = find_joint_point(lines_hor_shift, lines_ver_shift)
+    list_lines = find_joint_point(lines_hor_shift, lines_ver_shift)
     
-    #Объединяем горизонтальные и вертикальные линии в один список
-    list_lines.extend(lines_hor)
-    list_lines.extend(lines_ver)
-   
-    #Меняем местами х и y
-    list_lines = swapHV(list_lines)
+    list_cycle, graph = graph_cycle(list_lines) #ищем циклы и остаток графа
+    list_connectivity = connectivity_graph(graph) #ищем связанные графы
     
-    #Ищем циклы
-    graph, list_object = graph_cycle(list_lines)
-    
-    #Ищем связанные графы и превращаем их в циклы
-    list_object_connectivity = connectivity_graph(graph)
-    
-    return list_object, list_object_connectivity, list_lines
+    return list_cycle, list_connectivity, list_lines
 
-
-#Метод поиска линий
 def find_lines(edges):
-  
-    #Задаем пустой список для координат
-    line_list = []
-    
+    """Метод поиска линий"""
+    line_list = [] #задаем пустой список для координат
     #Поиск горизонтальных линий
-    i = 0
-    while i < len(edges):
-        j = 0
+    for i in range(len(edges)):
         N = 1
-        while j < len(edges[i])-1:
-            if edges[i][j]:
-                #Если следующая ячейка - точка линии
-                if edges[i][j+1]:
-                    #Увеличиваем расстояние
-                    N = N + 1
-                elif edges[i][j-1]:
+        for j in range(len(edges[i]) - 1):
+            if edges[i][j]: #если текущая ячейка - точка
+                if edges[i][j + 1]: #если следующая ячейка - точка линии
+                    N = N + 1 #увеличиваем расстояние
+                elif edges[i][j - 1]: 
                     #Заносим началаьную и конечную точку линии
-                    line_list.append([i,j-N+1,i,j])           
+                    line_list.append([i, j - N + 1, i, j])           
                     N = 1
-                    
-            j = j+1
-        i = i + 1
-    
     return line_list
 
-
-#Метод перестановки Г и В координат
-def swapHV(list):
+def swap(list):
+    """Метод перестановки координат x и y в конструкциях [[y1, x1, y2, x2]]"""
     for i in range(len(list)):
         list[i][1], list[i][0] = list[i][0], list[i][1]
         list[i][3], list[i][2] = list[i][2], list[i][3]
     return list
 
-    
-#Метод сдвига 2 линий
-def shift_line(list):
-    
-    sh_list = []
-    
-    i = 0
-    while i < len(list):
-        j = 0
-        
-        while j < len(list):
-            
-            if (list[i][2:4] == [list[j][0] + 1, list[j][1] - 1] or 
-                list[i][2:4] == [list[j][0] - 1, list[j][1] - 1] or 
-                list[i][2:4] == [list[j][0], list[j][1] - 1]):
-                
-                 
-                sh_list[0:4] = list[i][0],list[i][1],list[i][0],list[j][3]
-                
-                sh_list.extend([i,j])
-                
-                return sh_list
-            
-            j = j + 1
-        i = i + 1
-    
-    return 0
+def shift_lines(lines):
+    """Метод сдвига всех линий"""
+    def shift_line(list):
+        """Вспомогательный метод сдвига двух линий"""
+        shift_list = [] #Инициализируем список для сдвинутых линий
+        for i in range(len(lines)):
+            for j in range(len(lines)):
+                if (lines[i][2:4] == [lines[j][0] + 1, lines[j][1] - 1] or 
+                    lines[i][2:4] == [lines[j][0] - 1, lines[j][1] - 1] or 
+                    lines[i][2:4] == [lines[j][0], lines[j][1] - 1]):
+                                 
+                    shift_list[0:4] = lines[i][0],lines[i][1],lines[i][0],lines[j][3]
+                    shift_list.extend([i,j])
+                    return shift_list
+        return None
 
-#Метод сдвига линий
-def shift_lines(list):
-    
-    shift_list = shift_line(list)
-     
+    shift_list = shift_line(lines)
     while shift_list:
-        
-        
-        list[shift_list[4]] = [int(i) for i in shift_list[0:4]]
-        del list[shift_list[5]]
-        
-        shift_list = shift_line(list)
+        lines[shift_list[4]] = [int(i) for i in shift_list[0:4]]
+        del lines[shift_list[5]]
+        shift_list = shift_line(lines)
             
-    return list
+    return lines
 
-
-#Метод поиска общей точки для смежных линий
 def find_joint_point(listH, listV):
-    
-    i = 0
-    while i < len(listH):
-        
-        j = 0
-        while j < len(listV):
-            
+    """Метод поиска общей точки для смежных линий"""
+    list_lines = [] #инициализируем список линий
+    for i in range(len(listH)):
+        for j in range(len(listV)):
             #1
             if((listH[i][0:2] == [listV[j][1] - 1, listV[j][0] + 1]) or (listH[i][0:2] == [listV[j][1] - 2, listV[j][0] + 1]) or
                (listH[i][0:2] == [listV[j][1] - 1, listV[j][0] + 2]) or (listH[i][0:2] == [listV[j][1] - 2, listV[j][0] + 2]) or
@@ -158,35 +103,24 @@ def find_joint_point(listH, listV):
                 
                 listH[i][3] = listV[j][2]
                 listV[j][3] = listH[i][2]
-                
-            
-            j = j + 1
-        i = i + 1
     
-    listV = swapHV(listV)
-    
-    return listH, listV
+    listH = swap(listH) #Делаем перестановку горизонтальных координат под вертикальные
+    list_lines.extend(listH) #Добавляем горизонтальные линии в один список
+    list_lines.extend(listV) #Добавляем вертикальные линии в один список
 
+    return list_lines
 
-#Метод поиска циклов в списке с помощью networkx
 def graph_cycle(list_lines):
-    
-    #Инициализируем граф
-    graph = nx.Graph()
-    list_cycle = []
-    
+    """Метод поиска циклов в списке с помощью networkx"""
+    graph = nx.Graph() #инициализируем граф
+    list_cycle = [] #инициализируем список для циклов
     #Заполняем граф ребрами
     for c in list_lines:
         graph.add_edge(tuple(c[0:2]),tuple(c[2:4]))
-    
     try:
-        while 'true':
-        
-            #Ищем цикл
-            list_cyc = list(nx.find_cycle(graph))
-        
-            #Добавляем его в список
-            list_cycle.extend([list_cyc])
+        while 'true': #пока есть циклы
+            list_cyc = list(nx.find_cycle(graph)) #ищем цикл
+            list_cycle.extend([list_cyc]) #добавляем его в список
             #Удаляем вершины, по которым прошлись
             for i in range(len(list_cyc)):
                 if list_cyc[i][0] in graph:
@@ -194,42 +128,33 @@ def graph_cycle(list_lines):
                 if list_cyc[i][1] in graph:
                     graph.remove_node(list_cyc[i][1])
                     
-    except nx.exception.NetworkXNoCycle:
-        return graph, list_cycle
-        
-#Поиск связанных графов для дальнейшей обработки
-def connectivity_graph(graph):
-    
-    #Инициализируем переменные
-    connectivity_list = []
-    list_object_connectivity = []
-    
-    #Ищем связанные графы
-    connectivity_list = nx.k_components(graph)
-    
-    #Заносим связанные графы в список
-    for i in range(len(connectivity_list[1])):
-        list_object_connectivity.extend([list(connectivity_list[1][i])])
-        
-    return list_object_connectivity
+    except nx.exception.NetworkXNoCycle: #если больше нет циклов
+        return list_cycle, graph
 
-#Преобразование связанного к циклам
+def connectivity_graph(graph):
+    """Поиск связанных графов"""
+    graph_list = [] #инициализируем список для связанного графа
+    list_connectivity = [] #инициализируем список для преобразования
+    graph_list = nx.k_components(graph) #ищем связанные графы
+    #print('graph_list: ', graph_list)
+    #Преобразуем связанные графы к циклам
+    for i in range(len(graph_list[1])):
+        list_connectivity.extend([list(graph_list[1][i])])
+    #print('list_connectivity: ',list_connectivity)
+    return list_connectivity
+
 def cycle_to_connectivity(list_object):
-    
-    list_object_connectivity = []
-    list_object_connectivity_help = []
-    
+    """Преобразование циклов к связанным графам"""
+    list_object_connectivity = [] #
+    list_object_connectivity_help = [] #
+    #
     for i in range(len(list_object)):
         for j in range(len(list_object[i])):
             list_object_connectivity_help.append(list_object[i][j][0])
-            
-            
         list_object_connectivity.extend([list_object_connectivity_help])
         list_object_connectivity_help = []
         
     return list_object_connectivity
-
-
 
 def transform_to_room(connectivity_graph_list):
     
@@ -265,7 +190,6 @@ def transform_to_room(connectivity_graph_list):
             list_y.remove(min_y)
             
         
-        print(i,':',list_mmx)
         #Ищем min_x и max_x при min_y
         min_x1 = min(list_mmx)
         max_x1 = max(list_mmx)
@@ -283,17 +207,77 @@ def transform_to_room(connectivity_graph_list):
             del list_x[list_y.index(max_y)]
             list_y.remove(max_y)
         
-        print(i,':',list_mmx)
+        
         #Ищем min_x и max_x при min_y
         min_x2 = min(list_mmx)
         max_x2 = max(list_mmx)
         
-        
-        location_list.append([(min_x1, min_y), (max_x1, min_y), (max_x2, max_y), (min_x2, max_y)])
+        if min_x1 == min_x2 and max_x1 == max_x2:
+            location_list.append([(min_x1, min_y), (max_x1, min_y), (max_x2, max_y), (min_x2, max_y)])
 
             
     return location_list
     
 def match():
-    pass    
+    pass
+
+
+#
+def transform_to_room_2(connectivity_graph_list):
     
+    location_list = []
+    location_list_help = []
+    
+    #Удаляем все графы меньше 4
+    i = 0
+    while i < len(connectivity_graph_list):
+        if len(connectivity_graph_list[i]) < 4:
+            del connectivity_graph_list[i]
+        else:
+            i = i + 1
+    
+    for i in range(len(connectivity_graph_list)):
+        
+        index_list = grahamscan(connectivity_graph_list[i])
+        for j in index_list:
+            location_list_help.append(connectivity_graph_list[i][j])            
+        location_list.append(location_list_help)
+        
+        location_list_help = []
+        index_list = []
+        
+    return location_list
+
+
+#Алгоритм Грэхема для нахождения выпуклой оболочки
+def grahamscan(connectivity_object):
+    
+    #функция определяет с какой стороны от вектора AB находится точка C
+    def rotate(A,B,C):
+        return (B[0] - A[0]) * (C[1] - B[1]) - (B[1] - A[1]) * (C[0] - B[0])
+    
+    n = len(connectivity_object)
+    P = [i for i in range(n)]
+
+    #Поиск старотовой точки
+    for i in range(1, n):
+        if connectivity_object[P[i]][0] < connectivity_object[P[0]][0]:
+            P[i], P[0] = P[0], P[i]
+    
+    H = [P[0]]
+    del P[0]
+    P.append(H[0])
+    while True:
+        right = 0
+        for i in range(1, len(P)):
+            if rotate(connectivity_object[H[-1]], 
+                      connectivity_object[P[right]], 
+                      connectivity_object[P[i]]) < 0:
+                right = i
+        if P[right] == H[0]:
+            break
+        else:
+            H.append(P[right])
+            del P[right]
+    
+    return H

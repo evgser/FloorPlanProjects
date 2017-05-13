@@ -1,59 +1,68 @@
 import cv2
 
 #Поиск комнат
-def find_room(list_object):
+def find_room(list_location):
     
-    list_room = []
+    #Инициализируем список комнат
+    rooms = []
     
-    #Вычисляем периметр объекта
-    list_per = []
-    list_per.extend(perimetr(list_object))
-    print('list_per:', list_per)
-    #Вычисляем площадь объекта
-    list_area = area(list_object)
-    print('list_area:', list_area)
+    #Вычисляем параметры из координат
+    perimetr = find_perimetr(list_location) #периметр объекта
+    area = find_area(list_location) #площадь объекта
 
-    #Выделиние комнат из объектов
-    for i in range(len(list_per)):
-       if list_per[i][1] > 1000 and list_area[i][1] > 8000:
-            list_room.append(list_per[i][0])
+    #Определяем тип объекта по списку параметров и заносим комнаты в список
+    for i in range(len(list_location)):
+       if perimetr[i] > 1000 and area[i] > 50000:
+            options = {'perimetr' : perimetr[i] , 'area' : area[i]}
+            rooms = compose(rooms, list_location[i], options = options )
             
-    return list_room
+    return rooms
 
-
+#Добавление переменных комнаты в один список
+def compose(rooms, list_location, entrance = [], options = [], type_room = '', assigment = ''):
+    
+    #Заносим все данные комнаты в словарь
+    room = {'location' : list_location,
+            'entrance' : entrance,
+            'options' : options,
+            'type' : type_room,
+            'assigment' : assigment}
+    rooms.append(room) #добавляем комнату в список
+    
+    return rooms
 
 #Поиск периметра
-def perimetr(list_object):
+def find_perimetr(list_location):
     
-    list_per = []
+    list_perimetr = [] #Инициализируем список со значениями периметра
     
-    for i in range(len(list_object)):
-        
+    #Ищем периметр для каждого объекта
+    for i in range(len(list_location)):
         sum = 0
-        
-        for j in range(len(list_object[i])):
-            
-            sum = sum + ((list_object[i][j][0][0] - list_object[i][j][1][0]) ** 2 + (list_object[i][j][0][1] - list_object[i][j][1][1]) ** 2) ** 0.5
-            
-        list_per.extend([[i,sum]])
+        for j in range(len(list_location[i])):
+            sum = sum + ((list_location[i][j][0][0] - list_location[i][j][1][0]) ** 2 
+                         + (list_location[i][j][0][1] - list_location[i][j][1][1]) ** 2) ** 0.5    
+        list_perimetr.append(sum)
 
-    return list_per
+    return list_perimetr
 
 #Вычисление площади
-def area(list_object):
-    area_list = []
-
+def find_area(list_object):
+    
+    area_list = [] #Инициализируем список со значениями площади
+    
+    #Ищем площадь для каждого объекта
     for i in range(len(list_object)):
         area = 0
         for j in range(len(list_object[i])):
-            area = area + (list_object[i][j][0][0] * list_object[i][j][1][1] - list_object[i][j][1][0] * list_object[i][j][0][1])
-
-        area_list.extend([[i, area / 2]])
+            area = area + (list_object[i][j][0][0] * list_object[i][j][1][1] 
+                            - list_object[i][j][1][0] * list_object[i][j][0][1])
+        area_list.append(area / 2)
     
     return area_list
 
-#Отрисовка объектов
 
+#Отрисовка объектов
 #Рисуем горизонтальные линии и вертикальные линии
 def drawHV(image,lines):
     for i in range(len(lines)):
@@ -62,7 +71,7 @@ def drawHV(image,lines):
 def draw_room(image,list_object,list_room):
     for i in list_room:
         for j in range(len(list_object[i])):
-            cv2.line(image, list_object[i][j][0], list_object[i][j][1], (100, 255, 100), 5)
+            cv2.line(image, list_object[i][j][0], list_object[i][j][1], (255, 180, 50), 5)
     
 
 def draw_cycles(image,list_cycles):
