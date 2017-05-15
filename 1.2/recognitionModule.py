@@ -71,3 +71,7 @@ def draw_room(image, rooms):
         for j in range(n):
             cv2.line(image, rooms[i]['location'][j], rooms[i]['location'][j + 1], (255, 180, 50), 5)
         cv2.line(image, rooms[i]['location'][n], rooms[i]['location'][0], (255, 180, 50), 5)
+
+def draw_door(image, entrance):
+    for i in range(len(entrance)):
+        cv2.line(image, entrance[i][0], entrance[i][1], (100, 255, 100), 10)

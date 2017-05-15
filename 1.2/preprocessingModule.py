@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import copy
 
 def find_object(edges):
     """Метод получения списка объектов"""
@@ -13,9 +14,11 @@ def find_object(edges):
     list_lines = find_joint_point(lines_hor_shift, lines_ver_shift)
     
     list_cycle, graph = graph_cycle(list_lines) #ищем циклы и остаток графа
+    #Преобразуем циклы в связанные списки
+    list_cycle_connectivity = cycle_to_connectivity(list_cycle)
     list_connectivity = connectivity_graph(graph) #ищем связанные графы
     
-    return list_cycle, list_connectivity, list_lines
+    return list_cycle_connectivity, list_connectivity, list_lines
 
 def find_lines(edges):
     """Метод поиска линий"""
@@ -69,37 +72,27 @@ def find_joint_point(listH, listV):
     list_lines = [] #инициализируем список линий
     for i in range(len(listH)):
         for j in range(len(listV)):
-            #1
-            if((listH[i][0:2] == [listV[j][1] - 1, listV[j][0] + 1]) or (listH[i][0:2] == [listV[j][1] - 2, listV[j][0] + 1]) or
-               (listH[i][0:2] == [listV[j][1] - 1, listV[j][0] + 2]) or (listH[i][0:2] == [listV[j][1] - 2, listV[j][0] + 2]) or
-               (listH[i][0:2] == [listV[j][1], listV[j][0] + 1]) or (listH[i][0:2] == [listV[j][1], listV[j][0] + 2]) or
-               (listH[i][0:2] == [listV[j][1] - 1, listV[j][0]]) or (listH[i][0:2] == [listV[j][1] - 2, listV[j][0]])):
+            #начальная точка горизонтальной линии с начальной вертикальной
+            if(listH[i][0] <= listV[j][1] <= listH[i][0] + 2 and
+               listH[i][1] - 2 <= listV[j][0] <= listH[i][1]):
                 
                 listH[i][1] = listV[j][0] 
                 listV[j][1] = listH[i][0]
-            #2 
-            elif((listH[i][0:2] == [listV[j][3] + 1,listV[j][2] + 1]) or (listH[i][0:2] == [listV[j][3] + 2,listV[j][2] + 1]) or
-                 (listH[i][0:2] == [listV[j][3] + 1,listV[j][2] + 2]) or (listH[i][0:2] == [listV[j][3] + 2,listV[j][2] + 2]) or
-                 (listH[i][0:2] == [listV[j][3], listV[j][2] + 1]) or (listH[i][0:2] == [listV[j][3], listV[j][2] + 2]) or
-                 (listH[i][0:2] == [listV[j][3] + 1, listV[j][2]]) or (listH[i][0:2] == [listV[j][3] + 2, listV[j][2]])):
+            #начальная точка горизонтальной линии с конечной вертикальной
+            elif(listH[i][0] - 2 <= listV[j][3] <= listH[i][0] and
+                 listH[i][1] - 2 <= listV[j][2] <= listH[i][1]):
                 
                 listH[i][1] = listV[j][2]
                 listV[j][3] = listH[i][0]
-            #3   
-            elif((listH[i][2:4] == [listV[j][1] - 1,listV[j][0] - 1]) or (listH[i][2:4] == [listV[j][1] - 2,listV[j][0] - 1]) or
-                 (listH[i][2:4] == [listV[j][1] - 1,listV[j][0] - 2]) or (listH[i][2:4] == [listV[j][1] - 2,listV[j][0] - 2]) or
-                 (listH[i][2:4] == [listV[j][1], listV[j][0] - 1]) or (listH[i][2:4] == [listV[j][1], listV[j][0] - 2]) or
-                 (listH[i][2:4] == [listV[j][1] - 1, listV[j][0]]) or (listH[i][2:4] == [listV[j][1] - 2, listV[j][0]])):
+            #конечная точка горизонтальной линии с начальной вертикальной
+            elif(listH[i][2] <= listV[j][1] <= listH[i][2] + 2 and
+                 listH[i][3] <= listV[j][0] <= listH[i][3] + 2):
                 
                 listH[i][3] = listV[j][0]
                 listV[j][1] = listH[i][2]
-            #4 
-            elif((listH[i][2:4] == [listV[j][3] + 1,listV[j][2] - 1]) or (listH[i][2:4] == [listV[j][3] + 2,listV[j][2] - 1]) or
-                 (listH[i][2:4] == [listV[j][3] + 1,listV[j][2] - 2]) or (listH[i][2:4] == [listV[j][3] + 2,listV[j][2] - 2]) or
-                 (listH[i][2:4] == [listV[j][3], listV[j][2] - 1]) or (listH[i][2:4] == [listV[j][3], listV[j][2] - 2]) or
-                 (listH[i][2:4] == [listV[j][3] + 1, listV[j][2]]) or (listH[i][2:4] == [listV[j][3] + 2, listV[j][2]]) or
-                 (listH[i][2:4] == [listV[j][3] - 1, listV[j][2]]) or (listH[i][2:4] == [listV[j][3] - 2, listV[j][2]]) or
-                 (listH[i][2:4] == [listV[j][3], listV[j][2] + 1]) or (listH[i][2:4] == [listV[j][3], listV[j][2] + 2])):
+            #конечная точка горизонтальной линии с конечной вертикальной
+            elif(listH[i][2] - 2 <= listV[j][3] <= listH[i][2] and
+                 listH[i][3] <= listV[j][2] <= listH[i][3] + 2):
                 
                 listH[i][3] = listV[j][2]
                 listV[j][3] = listH[i][2]
@@ -136,11 +129,9 @@ def connectivity_graph(graph):
     graph_list = [] #инициализируем список для связанного графа
     list_connectivity = [] #инициализируем список для преобразования
     graph_list = nx.k_components(graph) #ищем связанные графы
-    #print('graph_list: ', graph_list)
-    #Преобразуем связанные графы к циклам
+    #Преобразуем полученный словарь к единной структуре координат
     for i in range(len(graph_list[1])):
         list_connectivity.extend([list(graph_list[1][i])])
-    #print('list_connectivity: ',list_connectivity)
     return list_connectivity
 
 def cycle_to_connectivity(list_cycle):
@@ -155,6 +146,50 @@ def cycle_to_connectivity(list_cycle):
         list_help = []
         
     return list_cycle_connectivity
+
+def find_entrance(list_connectivity):
+    """Метод поиска дверей"""
+    sub_list_connectivity = copy.deepcopy(list_connectivity) #копируем связный список
+    entrance = [] #инициализируем список для хранения дверей
+
+    for i in range(len(list_connectivity)):
+        j = 0
+        while j < len(list_connectivity[i]):
+            start_x = list_connectivity[i][j][0] #инициализируем начальную точку по x
+            start_y = list_connectivity[i][j][1] #инициализируем начальную точку по y
+            wall_x = [] #инициализируем список для хранения точек стен по x
+            wall_y = [] #инициализируем список для хранения точек стен по y
+            sub_entrance = [] #инициализируем вспомогательный список для записи двери
+            #Ищем все точки одной стены по x и по y
+            for k in range(1, len(sub_list_connectivity[i])):
+                if start_x == sub_list_connectivity[i][k][0]:
+                    wall_x.append(list_connectivity[i][k])
+                if start_y == sub_list_connectivity[i][k][1]:
+                    wall_y.append(sub_list_connectivity[i][k])
+            #Если по x есть двери
+            if len(wall_x) > 2:
+                for l in range(len(wall_x)):
+                    for m in range(len(wall_x)):
+                        if wall_x[m][1] < wall_x[l][1] <= wall_x[m][1] + 4:
+                            sub_entrance.append([wall_x[l], wall_x[m]])
+                            #Удаляем добавленные точки дверей из связного списка
+                            sub_list_connectivity[i].remove(wall_x[l])
+                            sub_list_connectivity[i].remove(wall_x[m])
+            #Если по y есть двери
+            if len(wall_y) > 2:
+                for q in range(len(wall_y)):
+                    for r in range(len(wall_y)):
+                        if wall_y[r][0] < wall_y[q][0] <= wall_y[r][0] + 4:
+                            sub_entrance.append([wall_y[q], wall_y[r]])
+                            #Удаляем добавленные точки дверей из связного списка
+                            sub_list_connectivity[i].remove(wall_y[r])
+                            sub_list_connectivity[i].remove(wall_y[q])
+            #Если заносили двери
+            if sub_entrance:
+                entrance.append([i, sub_entrance]) #добавляем двери в общий список
+            j = j + 1
+            
+    return entrance
 
 def transform_to_room(connectivity_graph_list):
     """ """
