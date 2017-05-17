@@ -1,16 +1,21 @@
 import cv2
 
-def find_room(list_location):
+def find_room(list_location, list_entrance = []):
     """Метод выполняет поиск комнат"""
     rooms = [] #инициализируем список комнат
+    entrance = []
     #Вычисляем параметры из координат
     perimetr = find_perimetr(list_location) #периметр объекта
     area = find_area(list_location) #площадь объекта
     #Определяем тип объекта по списку параметров и заносим комнаты в список
     for i in range(len(list_location)):
-       if perimetr[i] > 800 and area[i] > 40000:
+        if perimetr[i] > 600 and area[i] > 40000: #удовлетворяет параметрам
+            if list_entrance:
+                for j in range(len(list_entrance)):    
+                    if i == list_entrance[j][0]:
+                        entrance = list_entrance[j][1]
             options = {'perimetr' : perimetr[i] , 'area' : area[i]}
-            rooms = compose(rooms, list_location[i], options = options )
+            rooms = compose(rooms, list_location[i], entrance, options)
             
     return rooms
 
@@ -65,12 +70,15 @@ def drawHV(image,lines):
         cv2.line(image, (lines[i][1], lines[i][0]), (lines[i][3], lines[i][2]), (100, 255, 100), 2)
         
 def draw_room(image, rooms):
-    """Метод рисует комнаты"""
+    """Метод рисует комнаты и двери"""
     for i in range(len(rooms)):
         n = len(rooms[i]['location']) - 1
         for j in range(n):
             cv2.line(image, rooms[i]['location'][j], rooms[i]['location'][j + 1], (255, 180, 50), 5)
         cv2.line(image, rooms[i]['location'][n], rooms[i]['location'][0], (255, 180, 50), 5)
+        if rooms[i]['entrance']:
+            for j in range(len(rooms[i]['entrance'])):
+                cv2.line(image, rooms[i]['entrance'][j][0], rooms[i]['entrance'][j][1], (100, 255, 100), 10)
 
 def draw_door(image, entrance):
     for i in range(len(entrance)):

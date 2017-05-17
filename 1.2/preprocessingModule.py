@@ -14,11 +14,18 @@ def find_object(edges):
     list_lines = find_joint_point(lines_hor_shift, lines_ver_shift)
     
     list_cycle, graph = graph_cycle(list_lines) #ищем циклы и остаток графа
-    #Преобразуем циклы в связанные списки
+    #Преобразуем циклы в связные списки
     list_cycle_connectivity = cycle_to_connectivity(list_cycle)
-    list_connectivity = connectivity_graph(graph) #ищем связанные графы
+    list_connectivity = connectivity_graph(graph) #ищем связные графы
+    location_room = []
+    location_room.extend(list_cycle_connectivity)
+    location_room.extend(list_connectivity)
+    entrance = find_entrance(list_cycle_connectivity) #получаем координаты дверей
+    location_room = transform_to_room_3(location_room)
     
-    return list_cycle_connectivity, list_connectivity, list_lines
+    
+    
+    return location_room, entrance
 
 def find_lines(edges):
     """Метод поиска линий"""
@@ -151,7 +158,6 @@ def find_entrance(list_connectivity):
     """Метод поиска дверей"""
     sub_list_connectivity = copy.deepcopy(list_connectivity) #копируем связный список
     entrance = [] #инициализируем список для хранения дверей
-
     for i in range(len(list_connectivity)):
         j = 0
         while j < len(list_connectivity[i]):
@@ -171,7 +177,8 @@ def find_entrance(list_connectivity):
                 for l in range(len(wall_x)):
                     for m in range(len(wall_x)):
                         if wall_x[m][1] < wall_x[l][1] <= wall_x[m][1] + 4:
-                            sub_entrance.append([wall_x[l], wall_x[m]])
+                            sub_entrance.append([(wall_x[l][0], wall_x[l][1] + 30),
+                                                 (wall_x[m][0], wall_x[m][1] - 30)])
                             #Удаляем добавленные точки дверей из связного списка
                             sub_list_connectivity[i].remove(wall_x[l])
                             sub_list_connectivity[i].remove(wall_x[m])
@@ -180,7 +187,8 @@ def find_entrance(list_connectivity):
                 for q in range(len(wall_y)):
                     for r in range(len(wall_y)):
                         if wall_y[r][0] < wall_y[q][0] <= wall_y[r][0] + 4:
-                            sub_entrance.append([wall_y[q], wall_y[r]])
+                            sub_entrance.append([(wall_y[q][0] + 30, wall_y[q][1]),
+                                                 (wall_y[r][0] - 30, wall_y[r][1])])
                             #Удаляем добавленные точки дверей из связного списка
                             sub_list_connectivity[i].remove(wall_y[r])
                             sub_list_connectivity[i].remove(wall_y[q])
@@ -191,6 +199,159 @@ def find_entrance(list_connectivity):
             
     return entrance
 
+def transform_to_room_3(list_connectivity):
+    """Метод преобразования координат объекта к координатам комнаты"""
+    def del_object(list_connectivity, n):
+        """Удаляем все объекты с менее, чем n точками"""
+        i = 0
+        while i < len(list_connectivity):
+            if len(list_connectivity[i]) < n:
+                del list_connectivity[i]
+            else:
+                i = i + 1
+        return list_connectivity
+    def find_mm_xy(mm_xy, list_x, list_y, flag_x):
+        """Ищем два значения min/max x(y) при max(min) y(x)"""
+        yx_mmxy = [] #задаём список для max/min y(x) при max/min x(y)
+        list_xy = copy.deepcopy(list_x)
+        list_yx = copy.deepcopy(list_y)
+        if flag_x == 'true': #если при max/min x
+            while mm_xy in list_xy:
+                yx_mmxy.append(list_yx[list_xy.index(mm_xy)]) #добавляем y(x) при max/min x(y)
+                del list_yx[list_xy.index(mm_xy)] #удаляем добавленное значение из y(x)
+                list_xy.remove(mm_xy) #удаляем
+            mm_yx = min(yx_mmxy) #ищем min y(x) при max/min x(y)
+            mm_yx2 = max(yx_mmxy) #ищем max y(x) при max/min x(y)
+            del list_xy
+            del list_yx
+            return [(mm_xy, mm_yx), (mm_xy, mm_yx2)]
+        else: #если при max/min y
+            while mm_xy in list_yx:
+                yx_mmxy.append(list_xy[list_yx.index(mm_xy)]) #добавляем y(x) при max/min x(y)
+                del list_xy[list_yx.index(mm_xy)] #удаляем добавленное значение из y(x)
+                list_yx.remove(mm_xy) #удаляем
+            mm_yx = min(yx_mmxy) #ищем min y(x) при max/min x(y)
+            mm_yx2 = max(yx_mmxy) #ищем max y(x) при max/min x(y)
+            del list_xy
+            del list_yx
+            return [(mm_yx, mm_xy), (mm_yx2, mm_xy)]
+    def first_match(sub_location_list, points_minxy, points_maxxy, flag_x):
+        """Производит первую проверку координат, ищет несоответствия"""
+        points_1 = []
+        points_2 = []
+        sub_location_list.append(points_minxy)
+        sub_location_list.append(points_maxxy)
+        if flag_x == 'true': #если при max/min x
+            flag_x = 'false'
+            if points_minxy[0][1] != points_maxxy[0][1]:
+                points_1 = [points_minxy[0], points_maxxy[0]]
+            if points_minxy[1][1] != points_maxxy[1][1]:
+                points_2 = [points_minxy[1], points_maxxy[1]]
+        else: #если при max/min y
+            flag_x = 'true'
+            if points_minxy[0][0] != points_maxxy[0][0]:
+                points_1 = [points_minxy[0], points_maxxy[0]]
+            if points_minxy[1][0] != points_maxxy[1][0]:
+                points_2 = [points_minxy[1], points_maxxy[1]]
+        return points_1, points_2, flag_x
+    def match(sub_location_list, points, list_x, list_y, flag_x):
+        """ """
+        if flag_x == 'true':
+            if points[0][0] < points[1][0]:
+                min_x = points[0][0]
+                max_x = points[1][0]
+            else:
+                min_x = points[1][0]
+                max_x = points[0][0]
+            points_minx = find_mm_xy(min_x, list_x, list_y, flag_x)
+            points_maxx = find_mm_xy(max_x, list_x, list_y, flag_x)
+            points_1 = [points_minx[1], points_maxx[0]]
+            points_2 = [points_minx[0], points_maxx[1]]
+            flag_x = 'false'
+            if (points_1[0][1] == points_1[1][1]):
+                sub_location_list.append(points_1)
+            elif (points_2[0][1] == points_2[1][1]):
+                sub_location_list.append(points_2)
+            else:
+                if points_2 in sub_location_list:
+                    match(sub_location_list, points_1, list_x, list_y, flag_x)
+                else:
+                    match(sub_location_list, points_2, list_x, list_y, flag_x)
+        else:
+            if points[0][1] < points[1][1]:
+                min_y = points[0][1]
+                max_y = points[1][1]
+            else:
+                min_y = points[1][1]
+                max_y = points[0][1]
+            points_miny = find_mm_xy(min_y, list_x, list_y, flag_x)
+            points_maxy = find_mm_xy(max_y, list_x, list_y, flag_x)
+            points_1 = [points_miny[1], points_maxy[0]]
+            points_2 = [points_miny[0], points_maxy[1]]
+            flag_x = 'true'
+            if (points_1[0][0] == points_1[1][0]):
+                sub_location_list.append(points_1)
+            elif (points_2[0][0] == points_2[1][0]): 
+                sub_location_list.append(points_2)
+            else:
+                if points_2 in sub_location_list:    
+                    match(sub_location_list, points_1, list_x, list_y, flag_x)
+                else:
+                    match(sub_location_list, points_2, list_x, list_y, flag_x)
+    def coordinate_transform(location_list):
+        """ """
+        for i in range(len(location_list)):
+            sub_list = []
+            for j in range(len(location_list[i])):
+                sub_list.append(location_list[i][j][0])
+                sub_list.append(location_list[i][j][1])
+            print(i, sub_list)
+            list_x = [sub_list[j][0] for j in range(len(sub_list))]
+            list_y = [sub_list[j][1] for j in range(len(sub_list))]            
+            flag_y = 'true'
+            for q in range(len(list_x)):
+                for k in range(len(list_x)):
+                    if flag_y == 'true':
+                        if list_y[q] == list_y[k] and  q < k:
+                            list_y[q + 1], list_y[k] = list_y[k], list_y[q + 1]
+                            list_x[q + 1], list_x[k] = list_x[k], list_x[q + 1]
+                            flag_y = 'false'
+                            break
+                    else:
+                        if list_x[q] == list_x[k] and q < k:
+                            list_x[q + 1], list_x[k] = list_x[k], list_x[q + 1]
+                            list_y[q + 1], list_y[k] = list_y[k], list_y[q + 1]
+                            flag_y = 'true'
+                            break
+            sub_list = []
+            for j in range(len(list_x)):
+                sub_list.append((list_x[j], list_y[j]))
+            location_list[i] = sub_list                        
+                    
+        return location_list
+    location_list = [] #инициализируем список координат комнаты
+    list_connectivity = del_object(list_connectivity, 4) #удаляем все объекты, в которых меньше 4 точек
+    for i in range(len(list_connectivity)):
+        sub_location_list = []
+        #Заполняем списки x и y
+        list_x = [list_connectivity[i][j][0] for j in range(len(list_connectivity[i]))]
+        list_y = [list_connectivity[i][j][1] for j in range(len(list_connectivity[i]))]
+        min_x = min(list_x) #ищем минимальное значение по x
+        max_x = max(list_x) #ищем максимальное значение по x
+        flag_x = 'true' #задаём флаг, что мы производим вычисления по x
+        #Ищем точки min/max y при max(min) x
+        points_minx = find_mm_xy(min_x, list_x, list_y, flag_x)
+        points_maxx = find_mm_xy(max_x, list_x, list_y, flag_x)
+        #Производим первую проверку
+        points_1, points_2, flag_x = first_match(sub_location_list, points_minx, points_maxx, flag_x)
+        if points_1:
+            match(sub_location_list, points_1, list_x, list_y, flag_x)
+        if points_2:
+            match(sub_location_list, points_2, list_x, list_y, flag_x)
+        location_list.append(sub_location_list) #добавляем в список координат каждый объект
+    location_list = coordinate_transform(location_list)
+    return location_list
+        
 def transform_to_room(connectivity_graph_list):
     """ """
     #Инициализируем переменные
